@@ -11,9 +11,9 @@ This Python script extracts the HTTP payload for each individual WARC record and
 
 Each of the below scripts are independent and have different usage scenerarios:
 
-* [yara_scan_warc.py](example_scenarios/simple_demonstration/yara_scan_warc.py) - Scan a local directory of WARC files with YARA-X. See Simple Usage.
-* [mass_web_crawl_warc.py](example_scenarios/scenario_2_wario_capture_http_library/mass_web_crawl_warc.py) - Demonstration of how to self-scan the internet to create your own WARC files. See Scenario 3.
-* [mass_scan_commoncrawl_ec2.py](example_scenarios/scenario_4_AWS_mass_scan/mass_scan_commoncrawl_ec2.py) - Scan the entire Common Crawl ~88TB archive with YARA-X. Multiprocess and tested with 128vCPUs. See Scenerio 4.
+* [yara_scan_warc.py](example_scenarios/simple_demonstration/yara_scan_warc.py) - Scan a local directory of WARC files with YARA-X. See [Simple Usage](https://github.com/askkemp/YARA-X-Scan-Web-ARChive-WARC/tree/main?tab=readme-ov-file#scenario-1-generate-warc-with-webrecorder-chrome-extension).
+* [mass_web_crawl_warc.py](example_scenarios/scenario_2_wario_capture_http_library/mass_web_crawl_warc.py) - Demonstration of how to self-scan the internet to create your own WARC files. See [Scenario 3](https://github.com/askkemp/YARA-X-Scan-Web-ARChive-WARC/tree/main?tab=readme-ov-file#scenario-3-download-locally-warcs-from-common-crawl-recommended-only-for-testing).
+* [mass_scan_commoncrawl_ec2.py](example_scenarios/scenario_4_AWS_mass_scan/mass_scan_commoncrawl_ec2.py) - Scan the entire Common Crawl ~88TB archive with YARA-X. Multiprocess and tested with 128vCPUs. See [Scenario 4](https://github.com/askkemp/YARA-X-Scan-Web-ARChive-WARC/tree/main?tab=readme-ov-file#scenerio-4-use-aws-to-mass-scan-warcs-from-common-crawl-recommended).
 
 # Simple Usage
 Clone this repo and install the needed libraries.
@@ -129,17 +129,23 @@ cd example_scenarios/scenario_4_AWS_mass_scan/
 ### Mass scan AWS
 The script is configured to download and scan the the Common Crawl CC-MAIN-2025-51. This can be changed by editing the configuration of the script to the crawl you desire.
 ```bash
-$ python3.13 mass_scan_commoncrawl_ec2.py
+[ec2-user@x scenario_4_AWS_mass_scan]$ python3.13 mass_scan_commoncrawl_ec2.py
+INFO:root:Will use 127 CPU cores for processing
+INFO:botocore.credentials:Found credentials from IAM Role: EC2_readonly_S3
 INFO:root:Processed WARC files tracked in file: processed_warc_files.txt
 INFO:root:Number of already processed WARC files to skip: 0
 INFO:root:Loaded YARA-X rules from: rules.yara
 INFO:root:Scan output results filename: yara_matches.json
-INFO:root:Using temporary directory: /home/ec2-user/cc_tmp_waij4n_q
-INFO:root:Total WARC files availble: 99999
+INFO:root:Using temporary directory: /home/ec2-user/YARA-X-Scan-Web-ARChive-WARC/example_scenarios/scenario_4_AWS_mass_scan/cc_tmp_e4a8u270
+INFO:root:Total WARC files available: 100000
 INFO:root:WARC files needing processing: 100000
-Processed WARC Files:   0%|                                                                                                          | 0/99999 [00:00<?, ?it/s]
+Processed WARC Files:   0%|                                                                                           | 127/100000 [00:56<8:14:22,  3.37it/s]
 ```
 
+Watch the YARA-X scan matches in realtime!
+```bash
+$ tail -f yara_matches.json | jq .
+```
 
 # Built with
 * Python 3.13
