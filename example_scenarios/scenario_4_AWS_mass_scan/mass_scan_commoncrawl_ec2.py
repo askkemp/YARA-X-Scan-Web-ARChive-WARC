@@ -25,7 +25,8 @@ WARC_PATHS_KEY = "crawl-data/CC-MAIN-2025-51/warc.paths.gz" # See https://common
 YARA_RULES_FILENAME = Path("rules.yara")
 OUTPUT_RESULTS_FILENAME = Path("yara_matches.json")
 WARC_STATE_TRACKER = Path("processed_warc_files.txt") # to track already processed WARC files
-CPU_COUNT_TO_USE = os.cpu_count() - 1 if os.cpu_count() and os.cpu_count() > 1 else 1 # for worker count
+total_cpus = os.cpu_count() or 1
+CPU_COUNT_TO_USE = total_cpus if total_cpus == 1 else max(1, int(total_cpus * 0.8)) # only use 80% of CPU cores to leave some overhead
 
 # logging setup
 logging.basicConfig(level=logging.INFO)
