@@ -14,6 +14,7 @@ Each of the below scripts are independent and have different usage scenerarios:
 * [yara_scan_warc.py](example_scenarios/simple_demonstration/yara_scan_warc.py) - Scan a local directory of WARC files with YARA-X. See [Simple Usage](https://github.com/askkemp/YARA-X-Scan-Web-ARChive-WARC/tree/main?tab=readme-ov-file#scenario-1-generate-warc-with-webrecorder-chrome-extension).
 * [mass_web_crawl_warc.py](example_scenarios/scenario_2_wario_capture_http_library/mass_web_crawl_warc.py) - Demonstration of how to self-scan the internet to create your own WARC files. See [Scenario 3](https://github.com/askkemp/YARA-X-Scan-Web-ARChive-WARC/tree/main?tab=readme-ov-file#scenario-3-download-locally-warcs-from-common-crawl-recommended-only-for-testing).
 * [mass_scan_commoncrawl_ec2.py](example_scenarios/scenario_4_AWS_mass_scan/mass_scan_commoncrawl_ec2.py) - Scan the entire Common Crawl ~88TB archive with YARA-X. Multiprocess and tested with 128vCPUs. See [Scenario 4](https://github.com/askkemp/YARA-X-Scan-Web-ARChive-WARC/tree/main?tab=readme-ov-file#scenerio-4-use-aws-to-mass-scan-warcs-from-common-crawl-recommended).
+* [download_WARC_matches.py](example_scenarios/scenario_4_AWS_mass_scan/download_WARC_matches.py) - Given the output from `mass_scan_commoncrawl_ec2.py`, will download the appropriate record from the WARC and save it to disk. See [Scenario 4](https://github.com/askkemp/YARA-X-Scan-Web-ARChive-WARC/tree/main?tab=readme-ov-file#scenerio-4-use-aws-to-mass-scan-warcs-from-common-crawl-recommended).
 
 # Simple Usage
 Clone this repo and install the needed libraries.
@@ -101,10 +102,15 @@ The script [mass_scan_commoncrawl_ec2.py](example_scenarios/scenario_4_AWS_mass_
 * YARA-X matches are written to disk in file `yara_matches.json` and include:
   * S3 key name of WARC record with match including offset of the record
   * Metadata of the matching YARA-X rule
-  * Content of the match and a superset of the match 
+  * Content of the match and a superset of the match
+
+The script [download_WARC_matches.py](example_scenarios/scenario_4_AWS_mass_scan/download_WARC_matches.py), given the `yara_matches.json` output from `mass_scan_commoncrawl_ec2.py` will:
+* Download and extracts to disk the payload from the specific WARC record ID that had a YARA-X match
+* Downloads just subset of the Common Crawl WARC (i.e., only a few MB of the original 1GB WARCfile is downloaded and saved)
+* Metadata from the HTTP headers from the WARC is put into json which cites the on-disk location of the payload
 
 ### AWS EC2 Instance
-The best way to scan through all the data is to use an large EC2 located at region `us-east-1` with a lot of cores, a fast network connection, and high IOPs SSD. For example, a c6gn.16xlarge (64vCPU, 128GB RAM, 100 Gigabit network) EC2 node with a 80GB io2 root volume at 60,000 IOPS SSD can scan the entire ~80TB of files in about 28 hours. Or a c6a.32xlarge (128vCPU, 256GB RAM, 50 Gigabit network) EC2 node with a 160GB io2 root volume at 100,000 IOPS SSD can scan the entire ~80TB of files in about 14 hours. In either EC2 configuration, the total cost is $70-80 USD.
+The best way to scan through all the data is to use an large EC2 located at region `us-east-1` with a lot of cores, a fast network connection, and high IOPs SSD. For example, a c6gn.16xlarge (64vCPU, 128GB RAM, 100 Gigabit network) EC2 node with a 80GB io2 root volume at 60,000 IOPS SSD can scan the entire ~80TB of files in about 28 hours. Or a c6a.32xlarge (128vCPU, 256GB RAM, 50 Gigabit network) EC2 node with a 160GB io2 root volume at 32,000 IOPS SSD can scan the entire ~80TB of files in about 14 hours.
 
 **Important note 1**: To access the CommonCrawl S3 bucket, you must [use an authenticated account](https://commoncrawl.org/blog/introducing-cloudfront-access-to-common-crawl-data) (i.e. not anonymous). There are two ways to do this:
 * Option 1: In the Python script, for the Boto3 S3 client, provide aws_access_key_id and aws_secret_access_key
@@ -115,7 +121,7 @@ The best way to scan through all the data is to use an large EC2 located at regi
 ### Install the needed tools on AMI AWS Linux 2023
 ```bash
 sudo dnf --releasever=latest update
-sudo dnf install python3.13 python3.13-pip htop git
+sudo dnf -y install python3.13 python3.13-pip htop git
 ```
 
 ### Get this repo and install the requirements
@@ -130,21 +136,48 @@ cd example_scenarios/scenario_4_AWS_mass_scan/
 The script is configured to download and scan the the Common Crawl CC-MAIN-2025-51. This can be changed by editing the configuration of the script to the crawl you desire.
 ```bash
 [ec2-user@x scenario_4_AWS_mass_scan]$ python3.13 mass_scan_commoncrawl_ec2.py
-INFO:root:Will use 127 CPU cores for processing
+INFO:root:Will use 102 CPU cores for processing
 INFO:botocore.credentials:Found credentials from IAM Role: EC2_readonly_S3
 INFO:root:Processed WARC files tracked in file: processed_warc_files.txt
 INFO:root:Number of already processed WARC files to skip: 0
 INFO:root:Loaded YARA-X rules from: rules.yara
 INFO:root:Scan output results filename: yara_matches.json
-INFO:root:Using temporary directory: /home/ec2-user/YARA-X-Scan-Web-ARChive-WARC/example_scenarios/scenario_4_AWS_mass_scan/cc_tmp_e4a8u270
+INFO:root:Using temporary directory: cc_tmp_e4a8u270
 INFO:root:Total WARC files available: 100000
 INFO:root:WARC files needing processing: 100000
-Processed WARC Files:   0%|                                                                                           | 127/100000 [00:56<8:14:22,  3.37it/s]
+Processed WARC Files:   0%|                                                                          | 127/100000 [00:56<8:14:22,  3.37it/s]
 ```
 
 Watch the YARA-X scan matches in realtime!
 ```bash
 $ tail -f yara_matches.json | jq .
+```
+
+### Download the Payload Matches
+Given the `yara_matches.json` output from `mass_scan_commoncrawl_ec2.py`, the script [download_WARC_matches.py](example_scenarios/scenario_4_AWS_mass_scan/download_WARC_matches.py) with download the payload and save it to disk. This script only downloads the WARC record match itself without having to download the entire 1GB WARC.
+
+```bash
+[ec2-user@x scenario_4_AWS_mass_scan]$ python3.13download_WARC_matches.py
+
+INFO:botocore.credentials:Found credentials from IAM Role: EC2_readonly_S3
+INFO:root:Loaded YARA-X match results from: yara_matches.json
+INFO:root:Downloading matched WARC payload to directory: downloads
+INFO:root:Outputting downloaded records to: payload_records.json
+Extracted WARC Files:   3%|█▉                                       | 88/2909 [00:28<16:51,  2.79it/s]
+```
+
+The output file `payload_records.json` contains metadata about the payload including the WARC record ID, HTTP headers, and payload location on disk
+```bash
+[ec2-user@x scenario_4_AWS_mass_scan]$ payload_records.json | jq -c '[.warc_record_id, .payload_file]'
+["<urn:uuid:a0cf36e7-f80b-462e-8fb9-f2a01292a931>","downloads/urn_uuid_a0cf36e7-f80b-462e-8fb9-f2a01292a931.bin"]
+["<urn:uuid:f808f41a-d9cf-4e39-a0c2-1387256116e9>","downloads/urn_uuid_f808f41a-d9cf-4e39-a0c2-1387256116e9.bin"]
+["<urn:uuid:e897765f-037b-4af2-9c80-eda4786e6010>","downloads/urn_uuid_e897765f-037b-4af2-9c80-eda4786e6010.bin"]
+["<urn:uuid:18623f8c-26d5-495b-b57f-89a23d8d9bc6>","downloads/urn_uuid_18623f8c-26d5-495b-b57f-89a23d8d9bc6.bin"]
+```
+
+Open the payload from the WARC
+```bash
+[ec2-user@x scenario_4_AWS_mass_scan]$ cat downloads/urn_uuid_a0cf36e7-f80b-462e-8fb9-f2a01292a931.bin
 ```
 
 # Built with
